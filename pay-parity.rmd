@@ -124,7 +124,7 @@ p3 <- ggplot(labforce_focus, aes(x = reorder(country, labforce_participation), y
 p3
 
 # Save as PNG (optional)
-ggsave("labforce_participation_bar.png", p3, width = 8, height = 5)
+ggsave("images/labforce_participation_bar.png", p3, width = 8, height = 5)
 
 ```
 
@@ -145,8 +145,8 @@ p2 <- ggplot(merged_focus, aes(x = life_expectancy, y = pay_parity)) +
   theme(legend.position = "none")
 
 p2
-ggsave("pay_parity_vs_lifeexp_selected.png", plot = p2, width = 8, height = 5, dpi = 300)
-knitr::include_graphics("pay_parity_vs_lifeexp_selected.png")
+ggsave("images/pay_parity_vs_lifeexp_selected.png", plot = p2, width = 8, height = 5, dpi = 300)
+knitr::include_graphics("images/pay_parity_vs_lifeexp_selected.png")
 
 ```    
 
@@ -175,9 +175,39 @@ p_payparity_trend <- ggplot(payparity_timeseries, aes(x = year, y = pay_parity, 
         y = "Pay Parity (0 = low, 1 = full parity)",
         colour = "Country")
  
+ggsave("images/p_payparity_trend.png", plot = p_payparity_trend, width = 8, height = 5, dpi = 300)
+knitr::include_graphics("images/p_payparity_trend.png")
 print(p_payparity_trend)
 
 ```
 
+```{r graph-female-labour-force,  echo=FALSE, results="hide", message=FALSE}
+# Extract female labour force participation index (normalized 0–1)
+labour_participation_data <- gender_gap_data %>%
+  filter(Indicator == "Global Gender Gap Report: Labour force participation",
+         `Attribute 1` == "Index") %>%
+  select(country = `Economy Name`,
+         iso3c = `Economy ISO3`,
+         labor_participation = `2022`) %>%
+  filter(!is.na(labor_participation))
 
-  
+labour_vs_parity <- payparity_data %>%
+  inner_join(labour_participation_data, by = c("country", "iso3c"))
+
+p_labour <- ggplot(labour_vs_parity, aes(x = labor_participation, y = pay_parity)) +
+  geom_point(aes(color = country), size = 3, alpha = 0.8) +
+  geom_text(aes(label = country), hjust = 0.5, vjust = -1, size = 3.5) +
+  geom_smooth(method = "lm", se = FALSE, color = "#1b9e77") +
+  labs(title = "Female Labor Force Participation vs Pay Parity (2022)",
+       x = "Labour Force Participation Index (0 = low, 1 = parity)",
+       y = "Pay Parity Index (0 = low, 1 = parity)",
+       subtitle = "Source: WEF Global Gender Gap Report") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none")
+
+ggsave("images/pay_parity_vs_labour_selected.png", plot = p_labour, width = 8, height = 5, dpi = 300)
+knitr::include_graphics("images/pay_parity_vs_labour_selected.png")
+
+print(p_labour)
+
+```  
