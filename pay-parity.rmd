@@ -1,14 +1,68 @@
 ---
-title: "Exploring the impact of Pay Parity on common Social Metrics"
-author: "Simon Gibson"
+title: "Exploring Pay Parity"
 output: html_document
 ---
   
-## Introduction
+
+## Why Pay Parity Matters: Exploring the Broader Impact
+
+Recent moves in New Zealand to roll back efforts aimed at achieving pay parity have sparked renewed debate over the true value of wage equality. Beyond the moral imperative of fairness, pay parity between men and women has far-reaching consequences for economic performance, social wellbeing, and national resilience. The World Economic Forum’s Global Gender Gap Report offers a rich dataset that goes beyond surface-level statistics—providing detailed indicators on wage equality, labor force participation, education, and health outcomes. By examining this data, we can start to understand how gender pay parity correlates with broader societal indicators such as life expectancy, crime, and economic opportunity—raising important questions about what New Zealand stands to gain or lose by stepping back from parity.
 
 The World Economic Forum (WEF) is an international non-governmental organization based in Switzerland, best known for convening global leaders at its annual meeting in Davos to discuss pressing economic, social, and political issues. One of its flagship publications is the Global Gender Gap Report, which benchmarks gender-based disparities across countries in four key dimensions: economic participation and opportunity, educational attainment, health and survival, and political empowerment. The report draws on a wide range of internationally recognized data sources, including national statistics offices, the International Labour Organization (ILO), the World Health Organization (WHO), the United Nations Development Programme (UNDP), and proprietary WEF surveys such as the Executive Opinion Survey. These datasets are synthesized to produce standardized indices, allowing meaningful cross-country comparisons and tracking of gender parity trends over time.
 
 With the recent decision in New Zealand to scrap attempts to promote pay parity, the  Global Gender Gap Report which has detailed indicators on economic participation, including wage equality for similar work, provides a useful source of data to analyse what sort of impact this change might have on the New Zealand economy going forward.
+
+### ✅ Arguments For Pay Parity
+
+####    Fairness and Human Rights
+
+        + Equal pay for equal work is a fundamental principle of fairness and gender equality.
+
+        + It aligns with international human rights standards and legal obligations in many countries.
+
+####        Economic Efficiency
+
+        + Tapping into the full potential of the workforce—regardless of gender—can increase productivity and GDP.
+
+        + Closing the pay gap boosts household income and spending, contributing to economic growth.
+
+####        Workplace Morale and Retention
+
+        + Fair compensation leads to better employee morale, higher retention, and improved company reputation.
+
+####        Talent Attraction and Innovation
+
+        + Organisations that ensure pay parity are more attractive to top talent and tend to have more diverse leadership, which can drive innovation.
+
+####    Positive Social Outcomes
+
+        + Gender-equal societies tend to have better health outcomes, higher levels of education, and lower crime and poverty rates.
+
+### ❌ Arguments Against (or Concerns Raised About) Pay Parity Policies
+
+####    Implementation Complexity
+
+        + Critics argue that measuring “equal work” is difficult in practice due to differences in roles, industries, and experience.
+
+####    Market Disruption
+
+        + Some fear that enforced wage parity may distort labor markets or create inefficiencies in wage-setting mechanisms.
+
+####    Perceived Unfairness by Employers
+
+        + Employers may feel constrained by pay parity laws if they believe they can’t reward individual negotiation, performance, or skill shortages.
+
+####    Administrative Burden
+
+        + Auditing and enforcing pay parity policies can be time-consuming and costly, especially for small businesses.
+
+####    Risk of Backlash or Tokenism
+
+        + If poorly communicated or implemented, pay parity initiatives may be met with resistance or lead to tokenistic compliance rather than genuine equity.
+        
+####   Target for foreign social interference
+
+        + Issues like pay parity are useful tools for foreign government entities to divide societies and weaken political structures in target states.
 
 ```{r setup,  echo=FALSE, results="hide", message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
@@ -25,15 +79,14 @@ gender_gap_data <- read_excel("/home/psymeg/dev/r/pay-parity/WEF-GGR.xlsx", shee
 
 # Define focus countries
 focus_countries <- c("New Zealand", "Canada", "United States", "United Kingdom", "France",
-                     "Japan", "China", "Australia", "Fiji", "Korea, Rep.", "Singapore", "Thailand", "Malaysia", "Sweden", "Norway", "Finland")
+                     "Japan", "China", "Australia", "Korea, Rep.", "Singapore", "Thailand", "Finland")
 
 # Filter for Wage equality indicator (2022)
 payparity_data <- gender_gap_data %>%
   filter(Indicator == "Global Gender Gap Report: Wage equality between women and men for similar work", gender_gap_data$`Attribute 1` == "Index") %>%
   select(country = `Economy Name`,
          iso3c = `Economy ISO3`,
-         pay_parity = `2022`) %>%
-  filter(country %in% focus_countries, !is.na(pay_parity))
+         pay_parity = `2022`) 
 
 # Fetch life expectancy data from World Bank (2022)
 lifeexp_raw <- WDI(indicator = "SP.DYN.LE00.IN", start = 2022, end = 2022)
@@ -51,7 +104,9 @@ merged_data <- payparity_data %>%
 # Optional: add region info
 merged_data$region <- countrycode(merged_data$iso3c, "iso3c", "region")
 
-
+payparity_all <- merged_data %>%
+  arrange(desc(pay_parity))  %>%
+  filter(!is.na(pay_parity), !is.na(life_expectancy))
 
 payparity_focus <- merged_data %>%
   filter(country %in% focus_countries) %>%
@@ -78,7 +133,7 @@ ggsave("pay_parity_bar_selected.png", plot = p1, width = 8, height = 5, dpi = 30
 knitr::include_graphics("pay_parity_bar_selected.png")
 
 #get nz pay parity
-nz_pay_parity <- payparity_focus %>%
+nz_pay_parity <- payparity_all %>%
   filter(country == "New Zealand") %>%
   pull(pay_parity)
 
@@ -98,7 +153,9 @@ nz_rank <- nz_row$rank
 total_countries <- nrow(payparity_ranked)
 ```
 
-As we can see from the above graph, New Zealand ranks a lot lower than the majority of the countries looked at. New Zealand's gender pay parity score in 2022 was `r round(nz_pay_parity, 2)`, ranking `r nz_rank` out of `r total_countries` countries globally according to the World Economic Forum.
+As shown in the bar chart above, New Zealand ranks relatively lowly in wage equality for similar work compared to other developed economies. This is especially striking given the country’s progressive reputation and historical efforts in gender equality such as being the first country in the world to give women the vote. The data suggests that other nations, for example, Korea, France, and Japan, are making greater progress in regards to pay parity despite facing their own systemic challenges. 
+
+New Zealand's gender pay parity score in 2022 was `r round(nz_pay_parity, 2)`, ranking `r nz_rank` out of `r total_countries` countries globally according to the World Economic Forum.
 
 ```{r labour-force-participation,  echo=FALSE, results="hide", message=FALSE}
 
@@ -130,7 +187,7 @@ ggsave("images/labforce_participation_bar.png", p3, width = 8, height = 5)
 
 ```{r graph-p2,  echo=FALSE, results="hide", message=FALSE}
 merged_focus <- merged_data %>%
-  filter(country %in% focus_countries) %>%
+  #filter(country %in% focus_countries) %>%
   distinct(country, .keep_all = TRUE) %>%     # Ensures 1 row per country
   filter(!is.na(pay_parity), !is.na(life_expectancy))
 
@@ -180,6 +237,7 @@ knitr::include_graphics("images/p_payparity_trend.png")
 print(p_payparity_trend)
 
 ```
+Looking at trends over time, we can see countries taking different paths. While some countries have steadily improved, others like New Zealand appear to have plateaued or even regressed. This visual reinforces the idea that policy decisions are important. Countries that commit to closing the wage gap often see tangible progress, with those that stall falling behind their peers.
 
 ```{r graph-female-labour-force,  echo=FALSE, results="hide", message=FALSE}
 # Extract female labour force participation index (normalized 0–1)
