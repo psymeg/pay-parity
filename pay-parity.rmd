@@ -6,63 +6,9 @@ output: html_document
 
 ## Why Pay Parity Matters: Exploring the Broader Impact
 
-Recent moves in New Zealand to roll back efforts aimed at achieving pay parity have sparked renewed debate over the true value of wage equality. Beyond the moral imperative of fairness, pay parity between men and women has far-reaching consequences for economic performance, social wellbeing, and national resilience. The World Economic Forum’s Global Gender Gap Report offers a rich dataset that goes beyond surface-level statistics—providing detailed indicators on wage equality, labor force participation, education, and health outcomes. By examining this data, we can start to understand how gender pay parity correlates with broader societal indicators such as life expectancy, crime, and economic opportunity—raising important questions about what New Zealand stands to gain or lose by stepping back from parity.
+Recent politically motivated moves in New Zealand to roll back efforts aimed at achieving pay parity have sparked renewed debate over the true value of wage equality. I thought it would be interesting to take a look at where New Zealand stands currently in relation to other countries. Also I wanted to see if beyond the moral imperative of fairness, pay parity between men and women has and correlatation to economic performance, social wellbeing, and national resilience. After a quick search I found The World Economic Forum’s Global Gender Gap Report which has a rich dataset that provides detailed statistical data regarding wage equality, labor force participation, education, and health outcomes. By examining this data, we can start to understand how gender pay parity correlates with broader societal indicators such as life expectancy, crime, and economic opportunity. This raises important questions about what Kiwis stands to gain or lose by stepping back from parity.
 
-The World Economic Forum (WEF) is an international non-governmental organization based in Switzerland, best known for convening global leaders at its annual meeting in Davos to discuss pressing economic, social, and political issues. One of its flagship publications is the Global Gender Gap Report, which benchmarks gender-based disparities across countries in four key dimensions: economic participation and opportunity, educational attainment, health and survival, and political empowerment. The report draws on a wide range of internationally recognized data sources, including national statistics offices, the International Labour Organization (ILO), the World Health Organization (WHO), the United Nations Development Programme (UNDP), and proprietary WEF surveys such as the Executive Opinion Survey. These datasets are synthesized to produce standardized indices, allowing meaningful cross-country comparisons and tracking of gender parity trends over time.
 
-With the recent decision in New Zealand to scrap attempts to promote pay parity, the  Global Gender Gap Report which has detailed indicators on economic participation, including wage equality for similar work, provides a useful source of data to analyse what sort of impact this change might have on the New Zealand economy going forward.
-
-### ✅ Arguments For Pay Parity
-
-####    Fairness and Human Rights
-
-        + Equal pay for equal work is a fundamental principle of fairness and gender equality.
-
-        + It aligns with international human rights standards and legal obligations in many countries.
-
-####        Economic Efficiency
-
-        + Tapping into the full potential of the workforce—regardless of gender—can increase productivity and GDP.
-
-        + Closing the pay gap boosts household income and spending, contributing to economic growth.
-
-####        Workplace Morale and Retention
-
-        + Fair compensation leads to better employee morale, higher retention, and improved company reputation.
-
-####        Talent Attraction and Innovation
-
-        + Organisations that ensure pay parity are more attractive to top talent and tend to have more diverse leadership, which can drive innovation.
-
-####    Positive Social Outcomes
-
-        + Gender-equal societies tend to have better health outcomes, higher levels of education, and lower crime and poverty rates.
-
-### ❌ Arguments Against (or Concerns Raised About) Pay Parity Policies
-
-####    Implementation Complexity
-
-        + Critics argue that measuring “equal work” is difficult in practice due to differences in roles, industries, and experience.
-
-####    Market Disruption
-
-        + Some fear that enforced wage parity may distort labor markets or create inefficiencies in wage-setting mechanisms.
-
-####    Perceived Unfairness by Employers
-
-        + Employers may feel constrained by pay parity laws if they believe they can’t reward individual negotiation, performance, or skill shortages.
-
-####    Administrative Burden
-
-        + Auditing and enforcing pay parity policies can be time-consuming and costly, especially for small businesses.
-
-####    Risk of Backlash or Tokenism
-
-        + If poorly communicated or implemented, pay parity initiatives may be met with resistance or lead to tokenistic compliance rather than genuine equity.
-        
-####   Target for foreign social interference
-
-        + Issues like pay parity are useful tools for foreign government entities to divide societies and weaken political structures in target states.
 
 ```{r setup,  echo=FALSE, results="hide", message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
@@ -187,12 +133,12 @@ ggsave("images/labforce_participation_bar.png", p3, width = 8, height = 5)
 
 ```{r graph-p2,  echo=FALSE, results="hide", message=FALSE}
 merged_focus <- merged_data %>%
-  #filter(country %in% focus_countries) %>%
+  filter(country %in% focus_countries) %>%
   distinct(country, .keep_all = TRUE) %>%     # Ensures 1 row per country
   filter(!is.na(pay_parity), !is.na(life_expectancy))
 
 p2 <- ggplot(merged_focus, aes(x = life_expectancy, y = pay_parity)) +
-  geom_point(aes(color = country), size = 4, alpha = 0.8) +
+  geom_point(aes(color = country  == "New Zealand"), size = 4, alpha = 0.8) +
   geom_text(aes(label = country), hjust = 0.5, vjust = -1, size = 3.5) +
   theme_minimal(base_size = 13) +
   labs(title = "Pay Parity vs Life Expectancy (2022) - Selected Countries",
