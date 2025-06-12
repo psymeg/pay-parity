@@ -19,6 +19,8 @@ library(ggplot2)
 library(countrycode)
 library(WDI)
 library(tidyverse)
+library(RColorBrewer)
+library(scales)
 
 # Load WEF Gender Gap data (ensure WEF-GGR.xlsx is in working directory)
 gender_gap_data <- read_excel("/home/psymeg/dev/r/pay-parity/WEF-GGR.xlsx", sheet = "Data")
@@ -137,10 +139,14 @@ merged_focus <- merged_data %>%
   distinct(country, .keep_all = TRUE) %>%     # Ensures 1 row per country
   filter(!is.na(pay_parity), !is.na(life_expectancy))
 
+nz_point <- merged_focus %>% filter(country == "New Zealand")
+other_points <- merged_focus %>% filter(country != "New Zealand")
+
 p2 <- ggplot(merged_focus, aes(x = life_expectancy, y = pay_parity)) +
-  geom_point(aes(color = country  == "New Zealand"), size = 4, alpha = 0.8) +
-  geom_text(aes(label = country), hjust = 0.5, vjust = -1, size = 3.5) +
-  theme_minimal(base_size = 13) +
+  geom_point(data = other_points, aes(x = life_expectancy, y = pay_parity, color = country), size = 4, alpha = 0.8) +
+  geom_point(data = nz_point, aes(x = life_expectancy, y = pay_parity), color = "black", size = 4) +
+  geom_text(data = merged_focus, aes(x = life_expectancy, y = pay_parity, label = country), hjust = 0.5, vjust = -1, size = 3.5) +
+  theme_minimal(base_size = 12) +
   labs(title = "Pay Parity vs Life Expectancy (2022) - Selected Countries",
        subtitle = "Data: WEF Global Gender Gap Report & World Bank",
        y = "Pay Parity (0 = low, 1 = full parity)",
@@ -168,16 +174,27 @@ payparity_timeseries <- gender_gap_data %>%
   mutate(year = as.integer(year)) %>%
   filter(!is.na(pay_parity))
 
+# Get country list
+countries <- unique(payparity_timeseries$country)
+other_countries <- setdiff(countries, "New Zealand")
+
+# Set color mapping: black for NZ, distinct for others
+other_colors <- setNames(hue_pal()(length(other_countries)), other_countries)
+color_map <- c("New Zealand" = "black", other_colors)
+
+# Plot
 p_payparity_trend <- ggplot(payparity_timeseries, aes(x = year, y = pay_parity, color = country)) +
-   geom_line(linewidth = 1.2) +
-   geom_point(size = 1.5) +
-   theme_minimal(base_size = 13) +
-   labs(title = "Wage Equality Index Over Time (Selected Countries)",
-        subtitle = "Source: WEF Global Gender Gap Report",
-        x = "Year",
-        y = "Pay Parity (0 = low, 1 = full parity)",
-        colour = "Country")
- 
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 1.5) +
+  scale_color_manual(values = color_map) +
+  theme_minimal(base_size = 13) +
+  labs(title = "Wage Equality Index Over Time (Selected Countries)",
+       subtitle = "Source: WEF Global Gender Gap Report",
+       x = "Year",
+       y = "Pay Parity (0 = low, 1 = full parity)",
+       colour = "Country")
+
+# Save and show
 ggsave("images/p_payparity_trend.png", plot = p_payparity_trend, width = 8, height = 5, dpi = 300)
 knitr::include_graphics("images/p_payparity_trend.png")
 print(p_payparity_trend)
@@ -188,20 +205,32 @@ Looking at trends over time, we can see countries taking different paths. While 
 ```{r graph-female-labour-force,  echo=FALSE, results="hide", message=FALSE}
 # Extract female labour force participation index (normalized 0–1)
 labour_participation_data <- gender_gap_data %>%
+
   filter(Indicator == "Global Gender Gap Report: Labour force participation",
          `Attribute 1` == "Index") %>%
   select(country = `Economy Name`,
          iso3c = `Economy ISO3`,
          labor_participation = `2022`) %>%
+  filter(country %in% focus_countries) %>%
   filter(!is.na(labor_participation))
 
 labour_vs_parity <- payparity_data %>%
   inner_join(labour_participation_data, by = c("country", "iso3c"))
 
-p_labour <- ggplot(labour_vs_parity, aes(x = labor_participation, y = pay_parity)) +
-  geom_point(aes(color = country), size = 3, alpha = 0.8) +
-  geom_text(aes(label = country), hjust = 0.5, vjust = -1, size = 3.5) +
-  geom_smooth(method = "lm", se = FALSE, color = "#1b9e77") +
+# Split data into NZ and others
+nz_point <- labour_vs_parity %>% filter(country == "New Zealand")
+other_points <- labour_vs_parity %>% filter(country != "New Zealand")
+
+# Plot
+p_labour <- ggplot() +
+  geom_point(data = other_points, aes(x = labor_participation, y = pay_parity, color = country), size = 3, alpha = 0.8) +
+  geom_text(data = other_points, aes(x = labor_participation, y = pay_parity, label = country), 
+            hjust = 0.5, vjust = -1, size = 3.5) +
+  geom_point(data = nz_point, aes(x = labor_participation, y = pay_parity), color = "black", size = 3, alpha = 0.8) +
+  geom_text(data = nz_point, aes(x = labor_participation, y = pay_parity, label = country), 
+            hjust = 0.5, vjust = -1, size = 3.5, color = "black") +
+#  geom_smooth(data = labour_vs_parity, aes(x = labor_participation, y = pay_parity), 
+ #             method = "lm", se = FALSE, color = "#1b9e77") +
   labs(title = "Female Labor Force Participation vs Pay Parity (2022)",
        x = "Labour Force Participation Index (0 = low, 1 = parity)",
        y = "Pay Parity Index (0 = low, 1 = parity)",
@@ -215,3 +244,100 @@ knitr::include_graphics("images/pay_parity_vs_labour_selected.png")
 print(p_labour)
 
 ```  
+
+```{r homicide-data,  echo=FALSE, results="hide", message=FALSE}
+
+# Retrieve homicide rates
+homicide_data_raw <- WDI(country = "all", indicator = "VC.IHR.PSRC.P5", start = 2019, end = 2019, extra = TRUE)
+
+# Clean and filter homicide data
+homicide_data <- homicide_data_raw %>%
+  filter(!is.na(VC.IHR.PSRC.P5), region != "Aggregates") %>%
+  select(country = country, iso3c = iso3c, homicide_rate = VC.IHR.PSRC.P5) %>%
+  filter(country %in% focus_countries)
+
+# Merge with pay parity data
+homicide_vs_parity <- payparity_data %>%
+  inner_join(homicide_data, by = c("country", "iso3c"))
+
+homicide_vs_parity <- homicide_vs_parity %>%
+  filter(!is.na(homicide_rate), homicide_rate > 0)
+
+# Split data into NZ and others
+nz_point <- homicide_vs_parity %>% filter(country == "New Zealand")
+other_points <- homicide_vs_parity %>% filter(country != "New Zealand")
+
+# Plot
+p_homicide_log <- ggplot() +
+  geom_point(data = other_points, aes(x = homicide_rate, y = pay_parity, color = country), size = 3, alpha = 0.8) +
+  geom_text(data = other_points, aes(x = homicide_rate, y = pay_parity, label = country), 
+            hjust = 0.5, vjust = -1, size = 3.5) +
+  geom_point(data = nz_point, aes(x = homicide_rate, y = pay_parity), color = "black", size = 3, alpha = 0.8) +
+  geom_text(data = nz_point, aes(x = homicide_rate, y = pay_parity, label = country), 
+            hjust = 0.5, vjust = -1, size = 3.5, color = "black") +
+#  geom_smooth(data = homicide_vs_parity, aes(x = homicide_rate, y = pay_parity), 
+   #           method = "lm", se = FALSE, color = "#1b9e77") +
+  scale_x_log10() +
+  labs(title = "Homicide Rate vs Pay Parity (2019)",
+       x = "Homicide Rate (log scale, per 100,000 people)",
+       y = "Pay Parity Index (0 = low, 1 = parity)",
+       subtitle = "Sources: WEF Global Gender Gap Report & World Bank (WDI)") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none")
+
+ggsave("images/pay_parity_vs_homicide_log_selected.png", plot = p_homicide_log, width = 8, height = 5, dpi = 300)
+knitr::include_graphics("images/pay_parity_vs_homicide_log_selected.png")
+
+print(p_homicide_log)
+
+``` 
+
+```{r U5-mortality-Rate,  echo=FALSE, results="hide", message=FALSE}
+
+# Retrieve homicide rates
+mortality_data_raw <- WDI(country = "all", indicator = "SH.DYN.MORT", start = 2020, end = 2020, extra = TRUE)
+
+# Clean and filter mortality data
+mortality_rate_data <- mortality_data_raw %>%
+  filter(!is.na(SH.DYN.MORT), region != "Aggregates") %>%
+  select(country, iso3c, mortality_rate = SH.DYN.MORT) %>%
+  filter(country %in% focus_countries)
+
+# Merge with pay parity data
+mortality_vs_parity <- payparity_data %>%
+  inner_join(mortality_rate_data, by = c("country", "iso3c")) %>%
+  filter(!is.na(mortality_rate), mortality_rate > 0)
+
+# Split data into NZ and others
+nz_point <- mortality_vs_parity %>% filter(country == "New Zealand")
+other_points <- mortality_vs_parity %>% filter(country != "New Zealand")
+
+# Plot
+p_mortality <- ggplot() +
+  geom_point(data = other_points, aes(x = mortality_rate, y = pay_parity, color = country), size = 3, alpha = 0.8) +
+  geom_text(data = other_points, aes(x = mortality_rate, y = pay_parity, label = country), 
+            hjust = 0.5, vjust = -1, size = 3.5) +
+  geom_point(data = nz_point, aes(x = mortality_rate, y = pay_parity), color = "black", size = 3, alpha = 0.8) +
+  geom_text(data = nz_point, aes(x = mortality_rate, y = pay_parity, label = country), 
+            hjust = 0.5, vjust = -1, size = 3.5, color = "black") +
+  geom_smooth(data = mortality_vs_parity, aes(x = mortality_rate, y = pay_parity), 
+              method = "lm", se = FALSE, color = "#1b9e77") +
+  scale_x_log10() +  # Log scale for mortality rate
+  labs(title = "Under-5 Mortality Rate vs Pay Parity (2020) - Selected Countries",
+       x = "Under-5 Mortality Rate (log scale, per 1,000 live births)",
+       y = "Pay Parity Index (0 = low, 1 = parity)",
+       subtitle = "Sources: WEF Global Gender Gap Report & World Bank (WDI)") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none")
+
+# Save and display
+ggsave("images/pay_parity_vs_mortality_selected.png", plot = p_mortality, width = 8, height = 5, dpi = 300)
+knitr::include_graphics("images/pay_parity_vs_mortality_selected.png")
+
+print(p_mortality)
+
+``` 
+
+## Final Thoughts
+
+The data presented here points to a broader truth. Namely that pay parity is not just a gender issue. It is an issue that effects the nations economic performance with long term consequences for health, education and crime. Countries that treat pay parity as a strategic priority often see returns that ripple across society. As New Zealand reconsiders its path, this analysis offers a timely reminder of what might be at stake.
