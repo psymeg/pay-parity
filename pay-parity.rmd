@@ -6,9 +6,7 @@ output: html_document
 
 ## Why Pay Parity Matters: Exploring the Broader Impact
 
-Recent politically motivated moves in New Zealand to roll back efforts aimed at achieving pay parity have sparked renewed debate over the true value of wage equality. I thought it would be interesting to take a look at where New Zealand stands currently in relation to other countries. Also I wanted to see if beyond the moral imperative of fairness, pay parity between men and women has and correlatation to economic performance, social wellbeing, and national resilience. After a quick search I found The World Economic Forum’s Global Gender Gap Report which has a rich dataset that provides detailed statistical data regarding wage equality, labor force participation, education, and health outcomes. By examining this data, we can start to understand how gender pay parity correlates with broader societal indicators such as life expectancy, crime, and economic opportunity. This raises important questions about what Kiwis stands to gain or lose by stepping back from parity.
-
-
+Recent moves in New Zealand to roll back efforts aimed at achieving pay parity have sparked renewed debate over the true value of wage equality. These graphs take a look at where New Zealand stands currently in relation to other countries, looking to see if beyond the moral imperative of fairness, pay parity between men and women has any correlatation to economic performance, social wellbeing, and national resilience. The World Economic Forum’s Global Gender Gap Report is a rich dataset that provides detailed statistical data regarding wage equality, labor force participation, education, and health outcomes. By examining this data, we can start to understand how gender pay parity correlates with broader societal indicators such as life expectancy, crime, and economic opportunity. This raises important questions about the impact of this policy change on ordinary New Zealanders.
 
 ```{r setup,  echo=FALSE, results="hide", message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
@@ -19,7 +17,6 @@ library(ggplot2)
 library(countrycode)
 library(WDI)
 library(tidyverse)
-library(RColorBrewer)
 library(scales)
 
 # Load WEF Gender Gap data (ensure WEF-GGR.xlsx is in working directory)
@@ -101,37 +98,65 @@ nz_rank <- nz_row$rank
 total_countries <- nrow(payparity_ranked)
 ```
 
-As shown in the bar chart above, New Zealand ranks relatively lowly in wage equality for similar work compared to other developed economies. This is especially striking given the country’s progressive reputation and historical efforts in gender equality such as being the first country in the world to give women the vote. The data suggests that other nations, for example, Korea, France, and Japan, are making greater progress in regards to pay parity despite facing their own systemic challenges. 
-
 New Zealand's gender pay parity score in 2022 was `r round(nz_pay_parity, 2)`, ranking `r nz_rank` out of `r total_countries` countries globally according to the World Economic Forum.
 
-```{r labour-force-participation,  echo=FALSE, results="hide", message=FALSE}
+As shown in the bar chart above, New Zealand ranks lower than I expected in wage equality for similar work compared to other developed economies. I would have expected a higher ranking given the country’s progressive reputation and historical efforts in gender equality such as being the first country in the world to give women the vote.
 
+```{r labour-force-participation, echo=FALSE, results="hide", message=FALSE}
+
+# Filter for 2022 Labour Force Participation Index
 labforce_data <- gender_gap_data %>%
-  filter(Indicator == "Global Gender Gap Report: Labour force participation") %>%
-  select(country = `Economy Name`, iso3c = `Economy ISO3`, labforce_participation = `2022`) %>%
-  distinct(country, .keep_all = TRUE) %>%
-  filter(!is.na(labforce_participation))
-  
-  labforce_focus <- labforce_data %>%
-  filter(country %in% focus_countries) %>%
-  filter(!is.na(labforce_participation))
+  filter(Indicator == "Global Gender Gap Report: Labour force participation",
+         `Attribute 1` == "Index") %>%
+  select(country = `Economy Name`,
+         iso3c = `Economy ISO3`,
+         labforce_participation = `2022`) %>%
+  filter(!is.na(labforce_participation)) %>%
+  mutate(labforce_participation = as.numeric(labforce_participation)) %>%
+  distinct(country, .keep_all = TRUE)
 
-p3 <- ggplot(labforce_focus, aes(x = reorder(country, labforce_participation), y = labforce_participation,  fill = country == "New Zealand")) +
+# Subset to focus countries
+labforce_focus <- labforce_data %>%
+  filter(country %in% focus_countries)
+
+# Plot bar chart with New Zealand highlighted
+p3 <- ggplot(labforce_focus, aes(x = reorder(country, labforce_participation), 
+                                 y = labforce_participation,  
+                                 fill = country == "New Zealand")) +
   scale_fill_manual(values = c("TRUE" = "#c0392b", "FALSE" = "#f39c12"), guide = "none") +
   geom_col() +
   coord_flip() +
   theme_minimal(base_size = 12) +
   labs(title = "Labour Force Participation (2022)",
        subtitle = "Selected Countries",
-       x = "Country", y = "Labour Force Participation (Index 0-1)")
+       x = "Country", 
+       y = "Labour Force Participation (Index 0–1)")
 
-p3
+# Display plot
+print(p3)
 
-# Save as PNG (optional)
+# Save image
 ggsave("images/labforce_participation_bar.png", p3, width = 8, height = 5)
 
+# Rank all countries by labour force participation
+labourforce_ranked <- labforce_data %>%
+  arrange(desc(labforce_participation)) %>%
+  mutate(rank = row_number())
+
+# Extract New Zealand's participation and rank
+nz_row2 <- labourforce_ranked %>% filter(country == "New Zealand")
+nz_labourforce2 <- nz_row$labforce_participation
+nz_rank2 <- nz_row$rank
+total_countries2 <- nrow(labourforce_ranked)
+
+# Report
+cat(glue::glue(
+  "New Zealand Labour Force Participation Index: {nz_labourforce2}\n",
+  "Rank: {nz_rank2} out of {total_countries2} countries."
+))
 ```
+
+New Zealand's Labour Force Participation rate in 2022 was `r round(nz_pay_parity, 2)`, ranking `r nz_rank` out of `r total_countries` countries globally according to the World Economic Forum.
 
 ```{r graph-p2,  echo=FALSE, results="hide", message=FALSE}
 merged_focus <- merged_data %>%
@@ -320,8 +345,6 @@ p_mortality <- ggplot() +
   geom_point(data = nz_point, aes(x = mortality_rate, y = pay_parity), color = "black", size = 3, alpha = 0.8) +
   geom_text(data = nz_point, aes(x = mortality_rate, y = pay_parity, label = country), 
             hjust = 0.5, vjust = -1, size = 3.5, color = "black") +
-  geom_smooth(data = mortality_vs_parity, aes(x = mortality_rate, y = pay_parity), 
-              method = "lm", se = FALSE, color = "#1b9e77") +
   scale_x_log10() +  # Log scale for mortality rate
   labs(title = "Under-5 Mortality Rate vs Pay Parity (2020) - Selected Countries",
        x = "Under-5 Mortality Rate (log scale, per 1,000 live births)",
@@ -338,6 +361,8 @@ print(p_mortality)
 
 ``` 
 
+
+
 ## Final Thoughts
 
-The data presented here points to a broader truth. Namely that pay parity is not just a gender issue. It is an issue that effects the nations economic performance with long term consequences for health, education and crime. Countries that treat pay parity as a strategic priority often see returns that ripple across society. As New Zealand reconsiders its path, this analysis offers a timely reminder of what might be at stake.
+The data presented raises a number of thought-provoking questions. While New Zealand performs relatively well in pay parity, it lags behind in areas such as under-5 mortality and homicide rates. What connections, if any, might exist between gender equity and broader social outcomes? Could greater emphasis on pay parity contribute to improvements in other areas of wellbeing, or are these trends shaped by deeper, more complex forces? As New Zealand reflects on its priorities, this data invites a broader conversation about the interplay between equity, health, and safety.
